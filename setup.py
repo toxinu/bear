@@ -36,7 +36,7 @@ setup(
     keywords="",
     packages=['bear'],
     scripts=['scripts/bear'],
-    install_requires=['feedparser', 'docopt'],
+    install_requires=['feedparser', 'docopt', 'peewee'],
     classifiers=[
         'Intended Audience :: Developers',
         'Natural Language :: English',
@@ -49,5 +49,6 @@ setup(
         'Programming Language :: Python :: 3.0',
         'Programming Language :: Python :: 3.1',
         'Programming Language :: Python :: 3.2',
-        'Programming Language :: Python :: 3.3']
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4']
 )
