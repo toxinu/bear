@@ -6,7 +6,7 @@ from tempfile import mkstemp
 from bear import Bear
 
 
-class TestBear(unittest.TestCase):
+class BearTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp_config_path = mkstemp()[1]
 
@@ -39,6 +39,19 @@ class TestBear(unittest.TestCase):
         self.bear.add_feed(feed_url)
         feed = self.bear.get_feed(url=feed_url)
         self.assertEqual(feed.url, feed_url)
+
+
+class PluginManagerTestCase(unittest.TestCase):
+    def setUp(self):
+        self.tmp_config_path = mkstemp()[1]
+
+        self.bear = Bear(settings_path=self.tmp_config_path)
+        self.bear.config['settings']['db_path'] = ':memory:'
+        self.bear.initialize_db()
+
+    def tearDown(self):
+        self.bear.db.close()
+        os.remove(self.tmp_config_path)
 
 if __name__ == '__main__':
     unittest.main()
