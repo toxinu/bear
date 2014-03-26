@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+# coding: utf-8
+import sys
+from docopt import docopt
+from bear import Bear
+from bear import __version__
+
+doc = """Bear, RSS feed in your Inbox.
+
+Usage:
+  bear init-config <path>
+  bear add <url> [--settings=<path>]
+  bear delete <id> [--settings=<path>]
+  bear reset <id> [--settings=<path>]
+  bear feeds [--settings=<path>]
+  bear fetch <id> [--settings=<path>]
+  bear fetch-all [--settings=<path>]
+
+Options:
+  --settings=<path>     Settings file path [default: bear.ini]
+"""
+
+if __name__ == '__main__':
+    args = docopt(doc, version=__version__)
+
+    bear = Bear(settings_path=args.get('--settings'))
+    bear.initialize_db()
+
+    try:
+        if args.get('<id>'):
+            _id = int(args.get('<id>'))
+    except ValueError:
+        print('Error: <id> must be an integer.')
+        sys.exit(1)
+
+    if args.get('feeds'):
+        feeds = bear.get_feeds()
+        for feed in feeds:
+            print('[%s] %s (added:%s) (updated:%s)' % (
+                feed.id, feed.url, feed.added, feed.updated))
+    elif args.get('delete'):
+        bear.delete_feed(feed_id=args.get('<id>'))
+    elif args.get('add'):
+        bear.add_feed(args.get('<url>'))
+    elif args.get('fetch'):
+        bear.fetch_feed(feed_id=args.get('<id>'))
+    elif args.get('fetch-all'):
+        for feed in bear.get_feeds():
+            bear.fetch_feed(feed_id=feed.id)
+    elif args.get('init-db'):
+        bear.initialize_db()
+    elif args.get('init-config'):
+        bear.initialize_config()
+    elif args.get('reset'):
+        bear.reset_feed(feed_id=args.get('<id>'))

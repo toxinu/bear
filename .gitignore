@@ -1,0 +1,7 @@
+*.pyc
+*.egg-info
+virtenv
+venv
+*.ini
+.coverage
+*.db
