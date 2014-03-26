@@ -2,6 +2,9 @@
 
 
 class BasePlugin:
+    def __init__(self, **kwargs):
+        self.config = kwargs
+
     def pre_add_feed(self, url):
         raise NotImplementedError
 
@@ -21,4 +24,7 @@ class BasePlugin:
         raise NotImplementedError
 
     def post_set_feed(self, feed):
+        raise NotImplementedError
+
+    def pre_send_email(self, sender, to, subject, message, feed, entry):
         raise NotImplementedError

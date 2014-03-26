@@ -96,24 +96,26 @@ class Bear:
             Feed.create_table()
 
     def add_feed(self, url):
-        self.plugin_manager.run_signal('pre_add_feed', url)
+        url = self.plugin_manager.run_signal('pre_add_feed', url)
+        print(url)
 
         from .feed import Feed
         if not Feed.select(Feed.url).where(Feed.url == url).count():
             f = Feed(url=url)
             f.save()
-            self.plugin_manager.run_signal('post_add_feed', f)
+            f = self.plugin_manager.run_signal('post_add_feed', f)
             return f.id
-        self.plugin_manager.run_signal('post_add_feed', None)
-        return None
+        f = self.plugin_manager.run_signal('post_add_feed', None)
+        return f
 
     def delete_feed(self, feed_id=None):
         feed = self.get_feed(feed_id=feed_id)
-        self.plugin_manager.run_signal('pre_delete_feed', feed)
+        feed = self.plugin_manager.run_signal('pre_delete_feed', feed)
 
         if feed is not None:
             feed.delete_instance()
-        self.plugin_manager.run_signal('post_delete_feed', feed)
+
+        feed = self.plugin_manager.run_signal('post_delete_feed', feed)
 
     def get_feed(self, feed_id=None, url=None):
         from .feed import Feed
@@ -135,22 +137,29 @@ class Bear:
 
     def reset_feed(self, feed_id=None):
         feed = self.get_feed(feed_id=feed_id)
-        self.plugin_manager.run_signal('pre_reset_feed', feed)
+        feed = self.plugin_manager.run_signal('pre_reset_feed', feed)
 
         if feed is not None:
             feed.updated = None
             feed.save()
 
-        self.plugin_manager.run_signal('post_reset_feed', feed)
+        feed = self.plugin_manager.run_signal('post_reset_feed', feed)
 
-    def send_email(self, feed):
-        self.plugin_manager.run_signal('pre_send_email', feed)
+    def send_email(self, feed_parsed, entry):
+        sender, to, subject, message, feed, entry = self.plugin_manager.run_signal(
+            'pre_send_email',
+            self.config.get('email', 'from'),
+            self.config.get('email', 'to'),
+            '[%s] %s' % (feed_parsed.feed.title, entry.title),
+            entry.description,
+            feed_parsed,
+            entry)
 
-        msg = MIMEText(feed.description, 'html')
-        msg['Subject'] = feed.title
-        msg['From'] = self.config.get('email', 'from')
-        msg['To'] = self.config.get('email', 'to')
-        self.smtp_conn.sendmail(msg['From'], msg['To'].split(','), msg.as_string())
+        msg = MIMEText(message, 'html')
+        msg['Subject'] = subject
+        msg['From'] = sender
+        msg['To'] = to
+        self.smtp_conn.sendmail(sender, to.split(','), msg.as_string())
 
     def fetch_feed(self, feed_id=None):
         feed = self.get_feed(feed_id=feed_id)
@@ -159,6 +168,10 @@ class Bear:
             print('[%s] Fetching %s ...' % (feed.id, feed.url))
             d = feedparser.parse(feed.url)
             updated = d.feed.get('updated_parsed') or d.feed.get('published_parsed')
+
+            if updated is None:
+                print('[%s] !! Feed not well formatted (ignored)' % feed.id)
+                return
             updated = datetime.fromtimestamp(mktime(updated))
 
             if feed.updated is not None and updated >= feed.updated:
@@ -167,7 +180,7 @@ class Bear:
                 d.entries.reverse()
                 for e in d.entries:
                     print('    - %s' % e.title)
-                    self.send_email(e)
+                    self.send_email(d, e)
 
             feed.updated = updated
             feed.save()
