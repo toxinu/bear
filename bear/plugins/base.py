@@ -20,8 +20,8 @@ class BasePlugin:
     def __init__(self, **kwargs):
         self.config = kwargs
 
-    def help(self):
-        return __doc__
+    def dependencies(self):
+        pass
 
     def pre_add_feed(self, url):
         raise NotImplementedError
