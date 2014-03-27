@@ -58,4 +58,6 @@ if __name__ == '__main__':
     elif args.get('reset'):
         bear.reset_feed(feed_id=args.get('<id>'))
     elif args.get('help-plugin'):
-        bear.plugin_manager.get_plugin_help(args.get('<name>'))
+        d = bear.plugin_manager.get_plugin_help(args.get('<name>'))
+        if d:
+            print(d)
