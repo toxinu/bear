@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import smtplib
 import feedparser
 from time import mktime
@@ -15,9 +16,12 @@ from .plugins import PluginManager
 
 
 class Bear:
-    def __init__(self, settings_path="bear.ini"):
+    def __init__(self, settings_path="bear.ini", cli_opts={}):
+        self.cli_opts = cli_opts
         self.settings_path = settings_path
         self.load_settings()
+        self.load_cli_options()
+        self.load_logger()
         self.load_plugins()
 
         self.smtp_host = self.config.get('email', 'host')
@@ -41,6 +45,40 @@ class Bear:
                 self._smtp_conn.login(self.smtp_user, self.smtp_pass)
         return self._smtp_conn
 
+    def load_cli_options(self):
+        if self.cli_opts.get('--log-level'):
+            self.config['settings']['log_level'] = self.cli_opts.get('--log-level')
+        if self.cli_opts.get('--no-email'):
+            self.config['email']['to'] = ''
+
+    def load_logger(self):
+        level = self.config.get('settings', 'log_level').lower()
+
+        if level == "debug":
+            level = logging.DEBUG
+        elif level == "error":
+            level = logging.ERROR
+        else:
+            level = logging.INFO
+
+        opts = {'level': level}
+
+        if self.config.get('settings', 'log_file'):
+            opts.update({
+                'filename': self.config.get('settings', 'log_file'),
+                'format': '%(asctime)s %(name)s:%(levelname)-5s %(message)s',
+                'datefmt': '%m-%d %H:%M'})
+
+        logging.basicConfig(**opts)
+
+        console = logging.StreamHandler()
+        console.setLevel(level)
+        formatter = logging.Formatter('%(name)s:%(levelname)-5s %(message)s')
+        console.setFormatter(formatter)
+        logging.getLogger('').addHandler(console)
+
+        self.logger = logging.getLogger('bear')
+
     def load_plugins(self):
         conf = {}
         for plugin in self.config.get('settings', 'plugins').split(','):
@@ -61,6 +99,10 @@ class Bear:
             self.config.set('settings', 'db_path', 'bear.db')
         if not self.config.has_option('settings', 'plugins'):
             self.config.set('settings', 'plugins', '')
+        if not self.config.has_option('settings', 'log_file'):
+            self.config.set('settings', 'log_file', 'bear.log')
+        if not self.config.has_option('settings', 'log_level'):
+            self.config.set('settings', 'log_level', 'INFO')
 
         # Email
         if not self.config.has_section('email'):
@@ -97,15 +139,17 @@ class Bear:
 
     def add_feed(self, url):
         url = self.plugin_manager.run_signal('pre_add_feed', url)
-        print(url)
 
         from .feed import Feed
         if not Feed.select(Feed.url).where(Feed.url == url).count():
             f = Feed(url=url)
             f.save()
             f = self.plugin_manager.run_signal('post_add_feed', f)
+            self.logger.info('[feed-%s] added (%s)' % (f.id, f.url))
             return f.id
         f = self.plugin_manager.run_signal('post_add_feed', None)
+        feed = Feed.select().where(Feed.url == url).get()
+        self.logger.info('[feed-%s] already exists (%s)' % (feed.id, feed.url))
         return f
 
     def delete_feed(self, feed_id=None):
@@ -113,7 +157,10 @@ class Bear:
         feed = self.plugin_manager.run_signal('pre_delete_feed', feed)
 
         if feed is not None:
+            self.logger.info('[feed-%s] deleted (%s)' % (feed.id, feed.url))
             feed.delete_instance()
+        else:
+            self.logger.info('[feed-%s] not exists' % feed_id)
 
         feed = self.plugin_manager.run_signal('post_delete_feed', feed)
 
@@ -137,21 +184,27 @@ class Bear:
 
     def reset_feed(self, feed_id=None):
         feed = self.get_feed(feed_id=feed_id)
+        self.logger.debug('[feed-%s] Fire pre_reset_feed event' % feed_id)
         feed = self.plugin_manager.run_signal('pre_reset_feed', feed)
 
         if feed is not None:
             feed.updated = None
             feed.save()
+            self.logger.info('[feed-%s] reseted' % feed.id)
+        else:
+            self.logger.info('[feed-%s] not exists' % feed_id)
 
         feed = self.plugin_manager.run_signal('post_reset_feed', feed)
 
-    def send_email(self, feed_parsed, entry):
-        sender, to, subject, message, feed, entry = self.plugin_manager.run_signal(
+    def send_email(self, feed, feed_parsed, entry):
+        (sender, to, subject, message,
+            feed, feed_parsed, entry) = self.plugin_manager.run_signal(
             'pre_send_email',
             self.config.get('email', 'from'),
             self.config.get('email', 'to'),
             '[%s] %s' % (feed_parsed.feed.title, entry.title),
             entry.description,
+            feed,
             feed_parsed,
             entry)
 
@@ -159,28 +212,38 @@ class Bear:
         msg['Subject'] = subject
         msg['From'] = sender
         msg['To'] = to
-        self.smtp_conn.sendmail(sender, to.split(','), msg.as_string())
+        if self.config.get('email', 'to'):
+            self.smtp_conn.sendmail(sender, to.split(','), msg.as_string())
+            return True
+        return False
 
     def fetch_feed(self, feed_id=None):
         feed = self.get_feed(feed_id=feed_id)
+        email_count = 0
 
         if feed is not None:
-            print('[%s] Fetching %s ...' % (feed.id, feed.url))
+            self.logger.info('[feed-%s] fetching feed (%s)' % (feed.id, feed.url))
             d = feedparser.parse(feed.url)
             updated = d.feed.get('updated_parsed') or d.feed.get('published_parsed')
 
             if updated is None:
-                print('[%s] !! Feed not well formatted (ignored)' % feed.id)
+                self.logger.error('[feed-%s] not well formatted (ignored)' % feed.id)
                 return
             updated = datetime.fromtimestamp(mktime(updated))
 
             if feed.updated is not None and updated >= feed.updated:
-                print('[%s] No updates found' % feed.id)
+                self.logger.info('[feed-%s] no updates found' % feed.id)
             else:
+                self.logger.info('[feed-%s] %s updates found' % (feed.id, len(d.entries)))
                 d.entries.reverse()
                 for e in d.entries:
-                    print('    - %s' % e.title)
-                    self.send_email(d, e)
+                    self.logger.debug('[feed-%s] %s' % (feed.id, e.title))
+                    r = self.send_email(feed, d, e)
+                    if r:
+                        email_count += 1
 
+            self.logger.info('[feed-%s] %s email(s) sent' % (feed.id, email_count))
             feed.updated = updated
             feed.save()
+        else:
+            self.logger.info('[feed-%s] not exists' % feed_id)

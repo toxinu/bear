@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import logging
 from importlib import import_module
+
+logger = logging.getLogger('pluginmanager')
 
 
 class PluginManager:
@@ -14,6 +17,12 @@ class PluginManager:
                 'bear.plugins.%s' % plugin), '%sPlugin' % plugin.title())
             self.plugins[plugin] = plugin_class(**self.conf[plugin])
 
+    def get_plugin_help(self, name):
+        if self.plugins.get(name):
+            return self.plugins.get(name).help()
+        else:
+            logger.info('[plugin-%s] not exists' % name)
+
     def run_signal(self, signal, *args):
         # Get initial args given by Bear to
         # check if plugin return good number
@@ -26,18 +35,19 @@ class PluginManager:
                 # be converted in tuple for following plugin
                 if not isinstance(_args, tuple):
                     _args = (_args, )
-                msg = '[%s] %s (args:%s)' % (signal, name, args)
+                msg = '[plugin-%s] %s (args:%s)' % (name, signal, args)
                 if len(msg) > 90:
                     msg = msg[:90] + ' [...truncated...]'
-                print(msg)
+                logger.debug(msg)
                 # If plugin method doesn't return initial count of
                 # args sent by Bear, ignore this plugin work
                 if len(_args) != args_count:
-                    print('[%s] %s not return good number of args (ignored)' % (signal, name))
+                    logger.error('[plugin-%s] %s not return good number of args (ignored)' % (
+                        name, signal))
                 else:
                     args = _args
             except NotImplementedError:
-                print('[%s] %s not implemented' % (signal, name))
+                logger.debug('[plugin-%s] %s not implemented' % (name, signal))
         # If latest plugin return only one item it must
         # be converted in tuple to be unpacked by Bear
         if args_count > 1:
