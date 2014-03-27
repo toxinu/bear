@@ -6,6 +6,7 @@ from time import mktime
 from datetime import datetime
 from peewee import SqliteDatabase
 from email.mime.text import MIMEText
+from colorlog import ColoredFormatter
 
 try:
     from ConfigParser import ConfigParser
@@ -73,7 +74,20 @@ class Bear:
 
         console = logging.StreamHandler()
         console.setLevel(level)
-        formatter = logging.Formatter('%(name)s:%(levelname)-5s %(message)s')
+
+        logger_format = "%(log_color)s%(message)s"
+        if level == logging.DEBUG:
+            logger_format = '%(log_color)s%(name)s:%(levelname)-5s %(message)s'
+        formatter = ColoredFormatter(
+            logger_format,
+            datefmt=None,
+            reset=True,
+            log_colors={
+                'DEBUG': 'cyan',
+                'INFO': 'green',
+                'WARNING': 'yellow',
+                'ERROR': 'red',
+                'CRITICAL': 'red'})
         console.setFormatter(formatter)
         logging.getLogger('').addHandler(console)
 
