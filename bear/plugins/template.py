@@ -18,6 +18,7 @@ template_file = /tmp/example.html
 import os
 import sys
 import logging
+from string import Template as StringTemplate
 
 from .base import BasePlugin
 
@@ -28,17 +29,18 @@ class TemplatePlugin(BasePlugin):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.template_file = self.config.get('template_file')
-        self.subject_template = self.config.get('subject')
 
         if self.template_file is None:
             logger.debug('no template_file set')
-        if self.subject_template is None:
+        if self.config.get('subject') is None:
             logger.debug('no subject set')
 
         if self.template_file and os.path.exists(self.template_file):
             self._load_template()
         elif self.template_file:
             logger.error('template_file does not exists')
+        if self.config.get('subject'):
+            self.subject_template = StringTemplate(self.config.get('subject'))
 
     def dependencies(self):
         try:
@@ -53,7 +55,7 @@ class TemplatePlugin(BasePlugin):
 
     def pre_send_email(self, sender, to, subject, message, feed, feed_parsed, entry):
         if self.subject_template:
-            subject = self.subject_template.format(feed=feed, entry=entry)
+            subject = self.subject_template.substitute(feed=feed, entry=entry)
         if self.template_file:
             message = self.template.render(feed=feed, entry=entry)
         return sender, to, subject, message, feed, feed_parsed, entry
