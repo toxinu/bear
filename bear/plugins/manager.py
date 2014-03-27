@@ -10,17 +10,28 @@ class PluginManager:
         self.conf = conf
         self.load_plugins()
 
+    def get_plugin_module(self, name):
+        return import_module('bear.plugins.%s' % name)
+
+    def get_plugin_class(self, name):
+        return getattr(import_module(
+            'bear.plugins.%s' % name), '%sPlugin' % name.title())
+
     def load_plugins(self):
         self.plugins = {}
         for plugin in self.conf:
-            plugin_class = getattr(import_module(
-                'bear.plugins.%s' % plugin), '%sPlugin' % plugin.title())
+            try:
+                plugin_class = self.get_plugin_class(plugin)
+            except ImportError:
+                logger.error('[plugin-%s] not exists' % plugin)
             self.plugins[plugin] = plugin_class(**self.conf[plugin])
+            self.plugins[plugin].dependencies()
 
     def get_plugin_help(self, name):
-        if self.plugins.get(name):
-            return self.plugins.get(name).help()
-        else:
+        try:
+            plugin_module = self.get_plugin_module(name)
+            return getattr(plugin_module, '__doc__', ) or 'No docs provided.'
+        except ImportError:
             logger.info('[plugin-%s] not exists' % name)
 
     def run_signal(self, signal, *args):
