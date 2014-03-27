@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 import sys
+import logging
 from docopt import docopt
 from bear import Bear
 from bear import __version__
@@ -33,13 +34,13 @@ if __name__ == '__main__':
         if args.get('<id>'):
             _id = int(args.get('<id>'))
     except ValueError:
-        print('Error: <id> must be an integer.')
+        logging.error('<id> must be an integer.')
         sys.exit(1)
 
     if args.get('feeds'):
         feeds = bear.get_feeds()
         for feed in feeds:
-            print('[%s] %s (added:%s) (updated:%s)' % (
+            logging.info('[%s] %s (added:%s) (updated:%s)' % (
                 feed.id, feed.url, feed.added, feed.updated))
     elif args.get('delete'):
         bear.delete_feed(feed_id=args.get('<id>'))
