@@ -1,9 +1,27 @@
 # -*- coding: utf-8 -*-
+"""
+Description
+===========
+This is BasePlugin description.
+
+Install
+=======
+pip install deps
+
+Example
+=======
+[plugin:baseplugin]
+settings_1 = True
+settings_2 = test
+"""
 
 
 class BasePlugin:
     def __init__(self, **kwargs):
         self.config = kwargs
+
+    def help(self):
+        return __doc__
 
     def pre_add_feed(self, url):
         raise NotImplementedError
