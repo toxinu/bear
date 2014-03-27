@@ -36,7 +36,11 @@ setup(
     keywords="",
     packages=['bear'],
     scripts=['scripts/bear'],
-    install_requires=['feedparser', 'docopt', 'peewee'],
+    install_requires=[
+        'feedparser==5.1.3',
+        'docopt==0.6.1',
+        'peewee==2.2.2',
+        'colorlog==2.0.0'],
     classifiers=[
         'Intended Audience :: Developers',
         'Natural Language :: English',
