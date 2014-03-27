@@ -19,12 +19,6 @@ import os
 import sys
 import logging
 
-try:
-    from jinja2 import Template
-except ImportError:
-    print('Template plugin need Jinja2 (pip install jinja2).')
-    sys.exit(1)
-
 from .base import BasePlugin
 
 logger = logging.getLogger('plugins.template')
@@ -46,7 +40,15 @@ class TemplatePlugin(BasePlugin):
         elif self.template_file:
             logger.error('template_file does not exists')
 
+    def dependencies(self):
+        try:
+            import jinja2
+        except ImportError:
+            logger.error('Template plugin need Jinja2 (pip install jinja2).')
+            sys.exit(1)
+
     def _load_template(self):
+        from jinja2 import Template
         self.template = Template(open(self.config.get('template_file')).read())
 
     def pre_send_email(self, sender, to, subject, message, feed, feed_parsed, entry):
