@@ -8,22 +8,25 @@ from bear import __version__
 doc = """Bear, RSS feed in your Inbox.
 
 Usage:
-  bear init-config <path>
-  bear add <url> [--settings=<path>]
-  bear delete <id> [--settings=<path>]
-  bear reset <id> [--settings=<path>]
-  bear feeds [--settings=<path>]
-  bear fetch <id> [--settings=<path>]
-  bear fetch-all [--settings=<path>]
+    bear init-config <path>
+    bear add <url> [--settings=<path>] [options]
+    bear delete <id> [--settings=<path>] [options]
+    bear reset <id> [--settings=<path>] [options]
+    bear feeds [--settings=<path>] [options]
+    bear fetch <id> [--settings=<path>] [options]
+    bear fetch-all [--settings=<path>] [options]
+    bear help-plugin <name>
 
 Options:
-  --settings=<path>     Settings file path [default: bear.ini]
+    --settings=<path>     Settings file path [default: bear.ini]
+    --no-email            Don't send email
+    --log-level=<level>   Log level
 """
 
 if __name__ == '__main__':
     args = docopt(doc, version=__version__)
 
-    bear = Bear(settings_path=args.get('--settings'))
+    bear = Bear(settings_path=args.get('--settings'), cli_opts=args)
     bear.initialize_db()
 
     try:
@@ -53,3 +56,5 @@ if __name__ == '__main__':
         bear.initialize_config()
     elif args.get('reset'):
         bear.reset_feed(feed_id=args.get('<id>'))
+    elif args.get('help-plugin'):
+        bear.plugin_manager.get_plugin_help(args.get('<name>'))
