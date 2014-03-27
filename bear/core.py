@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 import logging
 import smtplib
 import feedparser
@@ -14,6 +15,8 @@ except ImportError:
     from configparser import ConfigParser
 
 from .plugins import PluginManager
+
+PY2 = sys.version_info[0] == 2
 
 
 class Bear:
@@ -222,6 +225,8 @@ class Bear:
             feed_parsed,
             entry)
 
+        if PY2:
+            message = message.encode('utf-8')
         msg = MIMEText(message, 'html')
         msg['Subject'] = subject
         msg['From'] = sender
