@@ -214,13 +214,15 @@ class Bear:
         feed = self.plugin_manager.run_signal('post_reset_feed', feed)
 
     def send_email(self, feed, feed_parsed, entry):
+        message = '<strong><a href="%s">Go to website/a></strong><hr> %s' % (
+            entry.link, entry.description)
         (sender, to, subject, message,
             feed, feed_parsed, entry) = self.plugin_manager.run_signal(
             'pre_send_email',
             self.config.get('email', 'from'),
             self.config.get('email', 'to'),
             '[%s] %s' % (feed_parsed.feed.title, entry.title),
-            entry.description,
+            message,
             feed,
             feed_parsed,
             entry)
