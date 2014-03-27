@@ -1,9 +1,8 @@
 *.pyc
 *.egg-info
-virtenv
-venv
 bear.ini
 .coverage
 *.db
 htmlcov
 cover
+.log
