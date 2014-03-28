@@ -11,6 +11,7 @@ class Feed(Model):
     url = CharField(unique=True)
     added = DateTimeField(default=datetime.now)
     updated = DateTimeField(null=True)
+    latest_id = CharField(null=True)
 
     class Meta:
         database = DB
