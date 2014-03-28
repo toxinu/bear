@@ -255,9 +255,19 @@ class Bear:
             if feed.updated is not None and updated >= feed.updated:
                 self.logger.info('[feed-%s] no updates found' % feed.id)
             else:
-                self.logger.info('[feed-%s] %s updates found' % (feed.id, len(d.entries)))
+                # i is default to 0 in case feed has never been fetched
+                # i will be entries element index to start to send email
+                i = 0
+                if feed.latest_id:
+                    for i, e in enumerate(d.entries):
+                        if e.id == feed.latest_id:
+                            break
+
+                # Reverse list to have oldest new in first
                 d.entries.reverse()
-                for e in d.entries:
+                self.logger.info('[feed-%s] %s updates found' % (
+                    feed.id, len(d.entries[-i:])))
+                for e in d.entries[-i:]:
                     self.logger.debug('[feed-%s] %s' % (feed.id, e.title))
                     r = self.send_email(feed, d, e)
                     if r:
