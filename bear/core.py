@@ -206,6 +206,7 @@ class Bear:
 
         if feed is not None:
             feed.updated = None
+            feed.latest_id = None
             feed.save()
             self.logger.info('[feed-%s] reseted' % feed.id)
         else:
@@ -246,13 +247,14 @@ class Bear:
             self.logger.info('[feed-%s] fetching feed (%s)' % (feed.id, feed.url))
             d = feedparser.parse(feed.url)
             updated = d.feed.get('updated_parsed') or d.feed.get('published_parsed')
-
             if updated is None:
-                self.logger.error('[feed-%s] not well formatted (ignored)' % feed.id)
-                return
-            updated = datetime.fromtimestamp(mktime(updated))
+                updated = datetime.now()
+                #self.logger.error('[feed-%s] not well formatted (ignored)' % feed.id)
+                #return
+            else:
+                updated = datetime.fromtimestamp(mktime(updated))
 
-            if feed.updated is not None and updated >= feed.updated:
+            if feed.updated is not None and updated <= feed.updated:
                 self.logger.info('[feed-%s] no updates found' % feed.id)
             else:
                 # i is default to 0 in case feed has never been fetched
@@ -260,18 +262,26 @@ class Bear:
                 i = 0
                 if feed.latest_id:
                     for i, e in enumerate(d.entries):
-                        if e.id == feed.latest_id:
+                        entry_id = e.get('id', e.get('link'))
+                        if entry_id == feed.latest_id:
                             break
 
-                # Reverse list to have oldest new in first
+                    if not i:
+                        self.logger.info('[feed-%s] no updates found' % feed.id)
+                        return
+
+                # Reverse list to have oldest entry in first
                 d.entries.reverse()
                 self.logger.info('[feed-%s] %s updates found' % (
                     feed.id, len(d.entries[-i:])))
                 for e in d.entries[-i:]:
-                    self.logger.debug('[feed-%s] %s' % (feed.id, e.title))
+                    entry_id = e.get('id', e.get('link'))
+                    self.logger.debug('[feed-%s] %s (%s)' % (
+                        feed.id, e.title, entry_id))
                     r = self.send_email(feed, d, e)
                     if r:
                         email_count += 1
+                feed.latest_id = entry_id
 
             self.logger.info('[feed-%s] %s email(s) sent' % (feed.id, email_count))
             feed.updated = updated

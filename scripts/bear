@@ -9,7 +9,7 @@ from bear import __version__
 doc = """Bear, RSS feed in your Inbox.
 
 Usage:
-    bear init-config <path>
+    bear init-config [--settings=<path>]
     bear add <url> [--settings=<path>] [options]
     bear delete <id> [--settings=<path>] [options]
     bear reset <id> [--settings=<path>] [options]
@@ -49,7 +49,9 @@ if __name__ == '__main__':
     elif args.get('fetch'):
         bear.fetch_feed(feed_id=args.get('<id>'))
     elif args.get('fetch-all'):
-        for feed in bear.get_feeds():
+        feeds = bear.get_feeds()
+        logging.info('[info] %s feeds found.' % feeds.count())
+        for feed in feeds:
             bear.fetch_feed(feed_id=feed.id)
     elif args.get('init-db'):
         bear.initialize_db()
@@ -61,3 +63,4 @@ if __name__ == '__main__':
         d = bear.plugin_manager.get_plugin_help(args.get('<name>'))
         if d:
             print(d)
+    logging.info('[info] Done.')
