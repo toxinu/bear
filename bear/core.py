@@ -36,6 +36,9 @@ class Bear:
 
         self._smtp_conn = None
 
+    def __del__(self):
+        self.db.close()
+
     @property
     def smtp_conn(self):
         if not self.config.get('email', 'to'):
